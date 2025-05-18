@@ -1,0 +1,20 @@
+{
+    "name": "your-name/simple-php-init",
+    "description": "Simple PHP Initialization - A minimal Docker environment for PHP 8.3 development",
+    "type": "project",
+    "require": {
+        "php": "^8.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "minimum-stability": "stable"
+}

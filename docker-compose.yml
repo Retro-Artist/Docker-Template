@@ -1,0 +1,68 @@
+services:
+  # Apache + PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=simple_php
+      - DB_USERNAME=root
+      - DB_PASSWORD=root_password
+
+  # MySQL Service
+  mysql:
+    image: mysql:8.0
+    platform: linux/arm64/v8  # For Apple Silicon (M1/M2) Macs
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: simple_php
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # phpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    platform: linux/amd64  # Use amd64 with emulation
+    restart: always
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+      MYSQL_ROOT_PASSWORD: root_password
+      PMA_HIDE_DATABASES: "^(information_schema|performance_schema|sys|mysql)$"
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 300M
+      PMA_ABSOLUTE_URI: "http://localhost:8081/"
+      PMA_USER_CONFIG_BASE: /etc/phpmyadmin/
+    volumes:
+      - phpmyadmin_data:/sessions
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  phpmyadmin_data:

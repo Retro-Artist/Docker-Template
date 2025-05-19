@@ -19,10 +19,10 @@ services:
       - DB_USERNAME=root
       - DB_PASSWORD=root_password
 
-  # MySQL Service
+# MySQL Service
   mysql:
     image: mysql:8.0
-    platform: linux/arm64/v8  # For Apple Silicon (M1/M2) Macs
+    platform: linux/amd64
     restart: always
     ports:
       - "3306:3306"
@@ -38,7 +38,7 @@ services:
   # phpMyAdmin Service
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    platform: linux/amd64  # Use amd64 with emulation
+    platform: linux/amd64  # Added platform specification
     restart: always
     ports:
       - "8081:80"
@@ -47,13 +47,6 @@ services:
       PMA_USER: root
       PMA_PASSWORD: root_password
       MYSQL_ROOT_PASSWORD: root_password
-      PMA_HIDE_DATABASES: "^(information_schema|performance_schema|sys|mysql)$"
-      PMA_ARBITRARY: 0
-      UPLOAD_LIMIT: 300M
-      PMA_ABSOLUTE_URI: "http://localhost:8081/"
-      PMA_USER_CONFIG_BASE: /etc/phpmyadmin/
-    volumes:
-      - phpmyadmin_data:/sessions
     depends_on:
       - mysql
     networks:
@@ -65,4 +58,3 @@ networks:
 
 volumes:
   mysql_data:
-  phpmyadmin_data:

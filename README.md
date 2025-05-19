@@ -37,13 +37,13 @@ A clean and maintainable development environment for PHP 8.3 applications, runni
 
 ```bash
 git clone https://github.com/Retro-Artist/php83-docker-env.git
-cd php83-docker-env
+cd docker-template
 ```
 
 2. Set up environment configuration:
 
 ```bash
-cp .env.example .env
+mv .env.example .env
 ```
 
 3. Start the Docker containers:
@@ -58,7 +58,13 @@ docker-compose up -d
 docker-compose exec app composer install
 ```
 
-5. Access your development environment:
+1. Run the database migration script:
+
+```bash
+docker-compose exec app php database/migrate.php
+```
+
+6. Access your development environment:
 
 - **Application**: [http://localhost:8080](http://localhost:8080)
 - **phpMyAdmin**: [http://localhost:8081](http://localhost:8081)

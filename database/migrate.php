@@ -58,36 +58,7 @@ try {
     
     echo "\nDatabase migration completed successfully!\n";
     echo "You can view your database by opening phpMyAdmin at: http://localhost:8081\n";
-    echo "Access credentials: Username: root, Password: root_password\n\n";
-    echo "To display the notes in your application, add the following code to public/index.php:\n\n";
-    
-    $sampleCode = <<<'CODE'
-<?php
-// Connect to database
-$host = getenv('DB_HOST') ?: 'mysql';
-$dbname = getenv('DB_DATABASE') ?: 'simple_php';
-$username = getenv('DB_USERNAME') ?: 'root';
-$password = getenv('DB_PASSWORD') ?: 'root_password';
-
-$pdo = new PDO("mysql:host={$host};dbname={$dbname}", $username, $password);
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-// Fetch notes
-$stmt = $pdo->query("SELECT * FROM notes ORDER BY created_at DESC");
-$notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Display notes
-foreach ($notes as $note) {
-    echo "<div class='card mb-3'>";
-    echo "<div class='card-header'>" . htmlspecialchars($note['title']) . "</div>";
-    echo "<div class='card-body'>";
-    echo "<p class='card-text'>" . htmlspecialchars($note['content']) . "</p>";
-    echo "<div class='text-muted'>Created: " . $note['created_at'] . "</div>";
-    echo "</div></div>";
-}
-CODE;
-    
-    echo $sampleCode . "\n";
+    echo "Your PHPMyAdmin Access credentials are: Username: root, Password: root_password\n\n";
     
 } catch (PDOException $e) {
     echo "Database Error: " . $e->getMessage() . "\n";

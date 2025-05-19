@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Simple PHP Initialization
  * A minimal Docker environment for PHP 8.3 development
@@ -8,6 +9,7 @@
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,6 +20,7 @@
             padding-top: 2rem;
             padding-bottom: 2rem;
         }
+
         .header {
             padding-bottom: 1rem;
             border-bottom: .05rem solid #e5e5e5;
@@ -25,6 +28,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header class="header">
@@ -61,15 +65,43 @@
                             $dbname = getenv('DB_DATABASE') ?: 'simple_php';
                             $username = getenv('DB_USERNAME') ?: 'root';
                             $password = getenv('DB_PASSWORD') ?: 'root_password';
-                            
-                            $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            echo '<div class="alert alert-success">Database connection successful!</div>';
-                            echo '<p>Connected to database: <strong>' . $dbname . '</strong></p>';
-                            echo '<p>MySQL version: <strong>' . $pdo->query('select version()')->fetchColumn() . '</strong></p>';
+
+                            $connected = false;
+                            $attempts = 0;
+                            $maxAttempts = 3;
+
+                            while (!$connected && $attempts < $maxAttempts) {
+                                try {
+                                    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+                                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                    $connected = true;
+                                    echo '<div class="alert alert-success">Database connection successful!</div>';
+                                    echo '<p>Connected to database: <strong>' . $dbname . '</strong></p>';
+                                    echo '<p>MySQL version: <strong>' . $pdo->query('select version()')->fetchColumn() . '</strong></p>';
+                                } catch (PDOException $e) {
+                                    $attempts++;
+                                    // Check for "unknown database" error specifically
+                                    if (strpos($e->getMessage(), 'Unknown database') !== false) {
+                                        echo '<div class="alert alert-warning">Database "' . $dbname . '" does not exist yet!</div>';
+                                        echo '<div class="alert alert-info">';
+                                        echo '<h4 class="alert-heading">Database Needs Initialization</h4>';
+                                        echo '<p>Run the database migration script to create the database and tables:</p>';
+                                        echo '<pre>docker-compose exec app php database/migrate.php</pre>';
+                                        echo '</div>';
+                                        return; // Exit the loop immediately
+                                    }
+
+                                    if ($attempts >= $maxAttempts) {
+                                        throw $e;
+                                    }
+                                    sleep(1); // Wait 1 second before retrying
+                                }
+                            }
                         } catch (PDOException $e) {
                             echo '<div class="alert alert-danger">Database connection failed: ' . $e->getMessage() . '</div>';
+                            echo '<p>Check your database connection settings in the .env file or ensure the MySQL service is running.</p>';
                         }
+
                         ?>
                     </div>
                 </div>
@@ -82,11 +114,11 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <?php 
+                    <?php
                     $extensions = get_loaded_extensions();
                     sort($extensions);
                     $chunks = array_chunk($extensions, ceil(count($extensions) / 3));
-                    
+
                     foreach ($chunks as $chunk) {
                         echo '<div class="col-md-4">';
                         echo '<ul class="list-group list-group-flush">';
@@ -111,26 +143,26 @@
 
             $pdo = new PDO("mysql:host={$host};dbname={$dbname}", $username, $password);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            
+
             // Check if the notes table exists
             $tableExists = false;
             $stmt = $pdo->query("SHOW TABLES LIKE 'notes'");
             if ($stmt->rowCount() > 0) {
                 $tableExists = true;
             }
-            
+
             if ($tableExists) {
                 // Fetch notes
                 $stmt = $pdo->query("SELECT * FROM notes ORDER BY created_at DESC");
                 $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
+
                 if (count($notes) > 0) {
                     echo '<div class="card mb-4">';
                     echo '<div class="card-header bg-warning text-dark">';
                     echo 'Sample Notes from Database';
                     echo '</div>';
                     echo '<div class="card-body">';
-                    
+
                     foreach ($notes as $note) {
                         echo "<div class='card mb-3'>";
                         echo "<div class='card-header'>" . htmlspecialchars($note['title']) . "</div>";
@@ -139,7 +171,7 @@
                         echo "<div class='text-muted'>Created: " . $note['created_at'] . "</div>";
                         echo "</div></div>";
                     }
-                    
+
                     echo '</div>';
                     echo '</div>';
                 }
@@ -183,4 +215,5 @@
         </footer>
     </div>
 </body>
+
 </html>

@@ -1,28 +1,27 @@
 FROM php:8.3-apache
 
-# Install system dependencies and PHP extensions in a single layer for better caching
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+# Simple PHP Initialization
+# A minimal Docker environment for PHP 8.3 development
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
     git \
-    libonig-dev \
+    curl \
     libpng-dev \
+    libonig-dev \
     libxml2-dev \
     libzip-dev \
-    unzip \
     zip \
-    && docker-php-ext-install \
-    bcmath \
-    exif \
-    gd \
-    mbstring \
-    pcntl \
-    pdo_mysql \
-    zip \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    unzip
 
-# Install Composer with cache mount for faster rebuilds
-RUN --mount=type=cache,target=/tmp/cache \
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
@@ -34,4 +33,4 @@ WORKDIR /var/www/html
 COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
 # Restart Apache
-CMD ["apache2-foreground"]
+RUN service apache2 restart

@@ -1,11 +1,11 @@
-# PHP 8.3 Docker Development Environment
+# PHP 8.4.7 Docker Development Environment
 
-A clean and maintainable development environment for PHP 8.3 applications, running on Apache with MySQL database and phpMyAdmin.
+A clean and maintainable development environment for PHP 8.4.7 applications, running on Nginx with MySQL database and phpMyAdmin.
 
 ## Features
 
-- **Modern PHP Environment**: PHP 8.3+ with all essential extensions pre-installed
-- **Complete Development Stack**: Apache, MySQL, and phpMyAdmin configured and ready to use
+- **Modern PHP Environment**: PHP 8.4.7 with all essential extensions pre-installed
+- **Complete Development Stack**: Nginx, PHP-FPM, MySQL, and phpMyAdmin configured and ready to use
 - **Docker-based**: Consistent environment across all development machines
 - **Ready for Any Framework**: Use any PHP framework or build your own from scratch
 - **Minimal Starting Point**: Clean slate to build your application your way
@@ -15,13 +15,12 @@ A clean and maintainable development environment for PHP 8.3 applications, runni
 ```
 .
 ├── public/                 # Web root directory
-│   ├── .htaccess           # URL rewriting for clean URLs
 │   └── index.php           # Application entry point
 ├── .env                    # Environment configuration
 ├── .env.example            # Environment template
 ├── .gitignore              # Git ignore patterns
-├── Dockerfile              # PHP and Apache configuration
-├── apache-config.conf      # Apache virtual host settings
+├── Dockerfile              # PHP-FPM configuration
+├── nginx.conf              # Nginx server settings
 ├── composer.json           # PHP dependencies configuration
 └── docker-compose.yml      # Container orchestration
 ```
@@ -58,7 +57,7 @@ docker-compose up -d
 docker-compose exec app composer install
 ```
 
-1. Run the database migration script:
+5. Run the database migration script:
 
 ```bash
 docker-compose exec app php database/migrate.php
@@ -67,7 +66,7 @@ docker-compose exec app php database/migrate.php
 6. Access your development environment:
 
 - **Application**: [http://localhost:8080](http://localhost:8080)
-- **phpMyAdmin**: [http://localhost:8081](http://localhost:8081)
+- **phpMyAdmin**: [http://localhost:8082](http://localhost:8082)
   - Server: mysql
   - Username: root
   - Password: root_password
@@ -97,7 +96,7 @@ Use these credentials to connect to MySQL from your PHP application:
 
 ```php
 $host = 'mysql';         // Container service name
-$dbname = 'mvc_crud';    // Default database (configurable in .env)
+$dbname = 'simple_php';  // Default database (configurable in .env)
 $username = 'root';
 $password = 'root_password';
 ```
@@ -107,7 +106,7 @@ $password = 'root_password';
 To deploy to a Linux production server:
 
 1. Clone the repository on the server.
-2. Configure your production Apache server to point to the `public` directory.
+2. Configure your production Nginx server to point to the `public` directory.
 3. Set up the MySQL database and update the `.env` file with the production credentials.
 4. Install Composer dependencies with `composer install --no-dev`.
 5. Run the database migration script.

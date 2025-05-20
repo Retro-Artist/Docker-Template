@@ -1,9 +1,9 @@
 {
     "name": "your-name/simple-php-init",
-    "description": "Simple PHP Initialization - A minimal Docker environment for PHP 8.3 development",
+    "description": "Simple PHP Initialization - A minimal Docker environment for PHP 8.4.7 development",
     "type": "project",
     "require": {
-        "php": "^8.3"
+        "php": "^8.4.7"
     },
     "autoload": {
         "psr-4": {

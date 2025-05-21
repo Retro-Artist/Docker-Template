@@ -66,8 +66,8 @@ docker-compose exec app php database/migrate.php
 6. Access your development environment:
 
 - **Application**: [http://localhost:8080](http://localhost:8080)
-- **phpMyAdmin**: [http://localhost:8082](http://localhost:8082)
-  - Server: mysql
+- **phpMyAdmin**: [http://localhost:8081](http://localhost:8081)
+  - Server: localhost
   - Username: root
   - Password: root_password
 
@@ -95,7 +95,7 @@ You can:
 Use these credentials to connect to MySQL from your PHP application:
 
 ```php
-$host = 'mysql';         // Container service name
+$host = 'localhost';     // Container service name
 $dbname = 'simple_php';  // Default database (configurable in .env)
 $username = 'root';
 $password = 'root_password';

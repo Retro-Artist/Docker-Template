@@ -191,14 +191,32 @@
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header bg-dark text-white">
-                        Next Steps
+                        Next Steps (No Docker)
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>Start building your PHP application in the <code>public/</code> directory</li>
+                            <li>Import the database located in <code>database/database.sql</code></li>
+                            <li>Install necessary packages with Composer: <code>composer install</code></li>
+                            <li>Structure your application any way you like</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        Next Steps (Docker)
                     </div>
                     <div class="card-body">
                         <ol>
                             <li>Start building your PHP application in the <code>public/</code> directory</li>
                             <li>Run the database migration script: <code>docker-compose exec app php database/migrate.php</code></li>
                             <li>Access phpMyAdmin at <a href="http://localhost:8081" target="_blank">http://localhost:8081</a></li>
-                            <li>Install packages with Composer: <code>docker-compose exec app composer require package-name</code></li>
+                            <li>Install necessary packages with Composer: <code>docker-compose exec app composer install</code></li>
                             <li>Structure your application any way you like</li>
                         </ol>
                     </div>

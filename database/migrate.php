@@ -57,8 +57,8 @@ try {
     echo "- Inserted sample data into 'notes' table\n";
     
     echo "\nDatabase migration completed successfully!\n";
-    echo "You can view your database by opening phpMyAdmin at: http://localhost:8081\n";
-    echo "Your PHPMyAdmin Access credentials are: Username: root, Password: root_password\n\n";
+    echo "If you're running docker on your local machine you access phpMyAdmin at: http://localhost:8081\n";
+    echo "Your PHPMyAdmin Access credentials on Docker are: Username: root, Password: root_password\n\n";
     
 } catch (PDOException $e) {
     echo "Database Error: " . $e->getMessage() . "\n";

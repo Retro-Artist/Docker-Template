@@ -2,11 +2,11 @@
 /**
  * Simple PHP Initialization - Database Migration Script
  * 
- * This script creates a basic database structure and adds sample data.
+ * This script imports the database structure and sample data from database.sql.
  * Run it with: docker-compose exec app php database/migrate.php
  */
 
-// Connect to the database using environment variables or default values
+// First connect to the database using environment variables or default values
 $host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_DATABASE') ?: 'simple_php';
 $username = getenv('DB_USERNAME') ?: 'root';
@@ -30,35 +30,43 @@ try {
     
     echo "Database connection established successfully!\n";
     
-    // Create sample tables
-    echo "Creating sample tables...\n";
+    // Path to the SQL file
+    $sqlFilePath = __DIR__ . '/database.sql';
     
-    // Example table: Simple notes table
-    $pdo->exec("DROP TABLE IF EXISTS notes");
-    $pdo->exec("
-        CREATE TABLE notes (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            content TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ");
-    echo "- Created 'notes' table\n";
+    if (!file_exists($sqlFilePath)) {
+        throw new Exception("SQL file not found: {$sqlFilePath}");
+    }
     
-    // Insert sample data
-    echo "Inserting sample data...\n";
-    $pdo->exec("
-        INSERT INTO notes (title, content) VALUES
-        ('Welcome to Simple PHP Initialization', 'This is a sample note created by the database migration script.'),
-        ('Getting Started', 'Edit the public/index.php file to begin building your PHP application.'),
-        ('Database Connections', 'Use PDO to connect to MySQL from your PHP scripts.')
-    ");
-    echo "- Inserted sample data into 'notes' table\n";
+    echo "Importing database structure and data from database.sql...\n";
+    
+    // Read the SQL file
+    $sql = file_get_contents($sqlFilePath);
+    
+    // Split SQL file into individual queries
+    $queries = preg_split('/;\s*$/m', $sql);
+    
+    // Execute each query
+    $successCount = 0;
+    $totalQueries = count($queries);
+    
+    foreach ($queries as $query) {
+        $query = trim($query);
+        if (!empty($query)) {
+            try {
+                $pdo->exec($query);
+                $successCount++;
+            } catch (PDOException $e) {
+                echo "Error executing query: " . $e->getMessage() . "\n";
+                echo "Query: " . substr($query, 0, 100) . "...\n";
+            }
+        }
+    }
+    
+    echo "Executed {$successCount} of {$totalQueries} queries successfully!\n";
     
     echo "\nDatabase migration completed successfully!\n";
-    echo "If you're running docker on your local machine you access phpMyAdmin at: http://localhost:8081\n";
-    echo "Your PHPMyAdmin Access credentials on Docker are: Username: root, Password: root_password\n\n";
+    echo "If you're running Docker on your local machine, you can access phpMyAdmin at: http://localhost:8081\n";
+    echo "Your PHPMyAdmin access credentials on Docker are: Username: root, Password: root_password\n\n";
     
 } catch (PDOException $e) {
     echo "Database Error: " . $e->getMessage() . "\n";

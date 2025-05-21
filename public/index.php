@@ -5,6 +5,67 @@
  * A minimal Docker environment for PHP 8.3 development
  */
 
+// Centralized database connection
+$dbConnection = null;
+$dbConnected = false;
+$dbError = null;
+$notes = [];
+$tableExists = false;
+
+try {
+    $host = getenv('DB_HOST') ?: 'localhost';
+    $dbname = getenv('DB_DATABASE') ?: 'simple_php';
+    $username = getenv('DB_USERNAME') ?: 'root';
+    $password = getenv('DB_PASSWORD') ?: 'root_password';
+
+    $connected = false;
+    $attempts = 0;
+    $maxAttempts = 3;
+
+    while (!$connected && $attempts < $maxAttempts) {
+        try {
+            $dbConnection = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
+            $dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $connected = true;
+            $dbConnected = true;
+
+            // Check if the notes table exists
+            $stmt = $dbConnection->query("SHOW TABLES LIKE 'notes'");
+            if ($stmt->rowCount() > 0) {
+                $tableExists = true;
+
+                // Fetch notes
+                $stmt = $dbConnection->query("SELECT * FROM notes ORDER BY created_at DESC");
+                $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        } catch (PDOException $e) {
+            $attempts++;
+            // Check for "unknown database" error specifically
+            if (strpos($e->getMessage(), 'Unknown database') !== false) {
+                $dbError = 'Database "' . $dbname . '" does not exist yet!';
+                break; // Exit the loop immediately
+            }
+
+            if ($attempts >= $maxAttempts) {
+                throw $e;
+            }
+            sleep(1); // Wait 1 second before retrying
+        }
+    }
+} catch (PDOException $e) {
+    $dbError = 'Database connection failed: ' . $e->getMessage();
+}
+
+// Get MySQL version if connected
+$mysqlVersion = null;
+if ($dbConnected) {
+    try {
+        $mysqlVersion = $dbConnection->query('select version()')->fetchColumn();
+    } catch (Exception $e) {
+        // Ignore error
+    }
+}
+
 // Display basic information about the environment
 ?>
 <!DOCTYPE html>
@@ -59,50 +120,61 @@
                         Database Connection
                     </div>
                     <div class="card-body">
-                        <?php
-                        try {
-                            $host = getenv('DB_HOST') ?: 'localhost';
-                            $dbname = getenv('DB_DATABASE') ?: 'simple_php';
-                            $username = getenv('DB_USERNAME') ?: 'root';
-                            $password = getenv('DB_PASSWORD') ?: 'root_password';
+                        <?php if ($dbConnected): ?>
+                            <div class="alert alert-success">Database connection successful!</div>
+                            <p>Connected to database: <strong><?= htmlspecialchars($dbname) ?></strong></p>
+                            <?php if ($mysqlVersion): ?>
+                                <p>MySQL version: <strong><?= htmlspecialchars($mysqlVersion) ?></strong></p>
+                            <?php endif; ?>
+                        <?php elseif (isset($dbError) && strpos($dbError, 'does not exist yet') !== false): ?>
+                            <div class="alert alert-warning"><?= htmlspecialchars($dbError) ?></div>
+                            <div class="alert alert-info">
+                                <h4 class="alert-heading">Database Needs Initialization</h4>
+                                <p>Your database exists but needs to be initialized with tables and sample data. You have two options:</p>
 
-                            $connected = false;
-                            $attempts = 0;
-                            $maxAttempts = 3;
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <strong>Option 1: Run the Migration Script</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-2">This will automatically create tables and insert sample data.</p>
 
-                            while (!$connected && $attempts < $maxAttempts) {
-                                try {
-                                    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-                                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                    $connected = true;
-                                    echo '<div class="alert alert-success">Database connection successful!</div>';
-                                    echo '<p>Connected to database: <strong>' . $dbname . '</strong></p>';
-                                    echo '<p>MySQL version: <strong>' . $pdo->query('select version()')->fetchColumn() . '</strong></p>';
-                                } catch (PDOException $e) {
-                                    $attempts++;
-                                    // Check for "unknown database" error specifically
-                                    if (strpos($e->getMessage(), 'Unknown database') !== false) {
-                                        echo '<div class="alert alert-warning">Database "' . $dbname . '" does not exist yet!</div>';
-                                        echo '<div class="alert alert-info">';
-                                        echo '<h4 class="alert-heading">Database Needs Initialization</h4>';
-                                        echo '<p>Run the database migration script to create the database and tables:</p>';
-                                        echo '<pre>docker-compose exec app php database/migrate.php</pre>';
-                                        echo '</div>';
-                                        return; // Exit the loop immediately
-                                    }
+                                        <div class="mb-2">
+                                            <span class="badge bg-secondary">For Non-Docker users:</span>
+                                            <div class="bg-dark text-light p-2 mt-1 rounded">
+                                                <code>php database/migrate.php</code>
+                                            </div>
+                                        </div>
 
-                                    if ($attempts >= $maxAttempts) {
-                                        throw $e;
-                                    }
-                                    sleep(1); // Wait 1 second before retrying
-                                }
-                            }
-                        } catch (PDOException $e) {
-                            echo '<div class="alert alert-danger">Database connection failed: ' . $e->getMessage() . '</div>';
-                            echo '<p>Check your database connection settings in the .env file or ensure the MySQL service is running.</p>';
-                        }
+                                        <div>
+                                            <span class="badge bg-secondary">For Docker users:</span>
+                                            <div class="bg-dark text-light p-2 mt-1 rounded">
+                                                <code>docker-compose exec app php database/migrate.php</code>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                        ?>
+                                <div class="card">
+                                    <div class="card-header bg-light">
+                                        <strong>Option 2: Manual Import</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Alternatively, you can manually import the SQL file:</p>
+                                        <ol class="mb-0">
+                                            <li>Go to phpMyAdmin at <a href="http://localhost:8081" target="_blank">http://localhost:8081</a> (for Docker users)</li>
+                                            <li>Select the <code><?= htmlspecialchars($dbname) ?></code> database</li>
+                                            <li>Click on the "Import" tab at the top</li>
+                                            <li>Choose the file <code>database/database.sql</code></li>
+                                            <li>Click "Go" to import the database structure and sample data</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-danger"><?= htmlspecialchars($dbError) ?></div>
+                            <p>Check your database connection settings in the .env file or ensure the MySQL service is running.</p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -123,7 +195,7 @@
                         echo '<div class="col-md-4">';
                         echo '<ul class="list-group list-group-flush">';
                         foreach ($chunk as $ext) {
-                            echo '<li class="list-group-item">' . $ext . '</li>';
+                            echo '<li class="list-group-item">' . htmlspecialchars($ext) . '</li>';
                         }
                         echo '</ul>';
                         echo '</div>';
@@ -133,71 +205,47 @@
             </div>
         </div>
 
-        <?php
-        // Check if the notes table exists and display notes if it does
-        try {
-            $host = getenv('DB_HOST') ?: 'localhost';
-            $dbname = getenv('DB_DATABASE') ?: 'simple_php';
-            $username = getenv('DB_USERNAME') ?: 'root';
-            $password = getenv('DB_PASSWORD') ?: 'root_password';
-
-            $pdo = new PDO("mysql:host={$host};dbname={$dbname}", $username, $password);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-            // Check if the notes table exists
-            $tableExists = false;
-            $stmt = $pdo->query("SHOW TABLES LIKE 'notes'");
-            if ($stmt->rowCount() > 0) {
-                $tableExists = true;
-            }
-
-            if ($tableExists) {
-                // Fetch notes
-                $stmt = $pdo->query("SELECT * FROM notes ORDER BY created_at DESC");
-                $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-                if (count($notes) > 0) {
-                    echo '<div class="card mb-4">';
-                    echo '<div class="card-header bg-warning text-dark">';
-                    echo 'Sample Notes from Database';
-                    echo '</div>';
-                    echo '<div class="card-body">';
-
-                    foreach ($notes as $note) {
-                        echo "<div class='card mb-3'>";
-                        echo "<div class='card-header'>" . htmlspecialchars($note['title']) . "</div>";
-                        echo "<div class='card-body'>";
-                        echo "<p class='card-text'>" . htmlspecialchars($note['content']) . "</p>";
-                        echo "<div class='text-muted'>Created: " . $note['created_at'] . "</div>";
-                        echo "</div></div>";
-                    }
-
-                    echo '</div>';
-                    echo '</div>';
-                }
-            } else {
-                echo '<div class="alert alert-info">';
-                echo '<h4 class="alert-heading">Database Initialization</h4>';
-                echo '<p>Run the database migration script to create sample tables:</p>';
-                echo '<pre>docker-compose exec app php database/migrate.php</pre>';
-                echo '</div>';
-            }
-        } catch (Exception $e) {
-            // Silently ignore errors - maybe the database isn't ready yet
-        }
-        ?>
+        <?php if ($tableExists && count($notes) > 0): ?>
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    Sample Data from Database
+                </div>
+                <div class="card-body">
+                    <?php foreach ($notes as $note): ?>
+                        <div class='card mb-3'>
+                            <div class='card-header'><?= htmlspecialchars($note['title']) ?></div>
+                            <div class='card-body'>
+                                <p class='card-text'><?= htmlspecialchars($note['content']) ?></p>
+                                <div class='text-muted'>Created: <?= htmlspecialchars($note['created_at']) ?></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php elseif (!$tableExists && $dbConnected): ?>
+            <div class="alert alert-info">
+                <h4 class="alert-heading">Database Initialization</h4>
+                <p>Run the database migration script to create sample tables:</p>
+                <pre>docker-compose exec app php database/migrate.php</pre>
+            </div>
+        <?php endif; ?>
 
         <div class="row">
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header bg-dark text-white">
-                        Next Steps (No Docker)
+                        <i class="bi bi-laptop"></i> Next Steps (Standard Environment)
                     </div>
                     <div class="card-body">
-                        <ol>
-                            <li>Start building your PHP application in the <code>public/</code> directory</li>
-                            <li>Import the database located in <code>database/database.sql</code></li>
-                            <li>Install necessary packages with Composer: <code>composer install</code></li>
+                        <ol class="ps-4">
+                            <li class="mb-2">Set up your database:
+                                <ul class="mt-1">
+                                    <li>Import <code>database/database.sql</code> manually via phpMyAdmin, or</li>
+                                    <li>Run <code>php database/migrate.php</code></li>
+                                </ul>
+                            </li>
+                            <li class="mb-2">Install dependencies: <code>composer install</code></li>
+                            <li class="mb-2">Start building your PHP application in the <code>public/</code> directory</li>
                             <li>Structure your application any way you like</li>
                         </ol>
                     </div>
@@ -209,14 +257,16 @@
             <div class="col-12">
                 <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
-                        Next Steps (Docker)
+                        <i class="bi bi-docker"></i> Next Steps (Docker Environment)
                     </div>
                     <div class="card-body">
-                        <ol>
-                            <li>Start building your PHP application in the <code>public/</code> directory</li>
-                            <li>Run the database migration script: <code>docker-compose exec app php database/migrate.php</code></li>
-                            <li>Access phpMyAdmin at <a href="http://localhost:8081" target="_blank">http://localhost:8081</a></li>
-                            <li>Install necessary packages with Composer: <code>docker-compose exec app composer install</code></li>
+                        <ol class="ps-4">
+                            <li class="mb-2">Initialize your database: <code>docker-compose exec app php database/migrate.php</code></li>
+                            <li class="mb-2">Access database admin at <a href="http://localhost:8081" target="_blank" class="text-decoration-none">http://localhost:8081</a>
+                                <small class="text-muted">(username: root, password: root_password)</small>
+                            </li>
+                            <li class="mb-2">Install dependencies: <code>docker-compose exec app composer install</code></li>
+                            <li class="mb-2">Start building your PHP application in the <code>public/</code> directory</li>
                             <li>Structure your application any way you like</li>
                         </ol>
                     </div>

@@ -2,69 +2,68 @@
 
 /**
  * Simple PHP Initialization
- * A minimal Docker environment for PHP 8.3 development
+ * A minimal Docker environment for PHP development
  */
 
-// Centralized database connection
-$dbConnection = null;
-$dbConnected = false;
-$dbError = null;
-$notes = [];
-$tableExists = false;
+// Setup database connection and fetch necessary data
+function setupDatabaseConnection()
+{
+    // Config
+    $config = [
+        'host' => getenv('DB_HOST') ?: 'localhost',
+        'dbname' => getenv('DB_DATABASE') ?: 'simple_php',
+        'username' => getenv('DB_USERNAME') ?: 'root',
+        'password' => getenv('DB_PASSWORD') ?: 'root_password',
+    ];
 
-try {
-    $host = getenv('DB_HOST') ?: 'localhost';
-    $dbname = getenv('DB_DATABASE') ?: 'simple_php';
-    $username = getenv('DB_USERNAME') ?: 'root';
-    $password = getenv('DB_PASSWORD') ?: 'root_password';
+    $result = [
+        'connection' => null,
+        'connected' => false,
+        'error' => null,
+        'notes' => [],
+        'tableExists' => false,
+        'mysqlVersion' => null
+    ];
 
-    $connected = false;
-    $attempts = 0;
-    $maxAttempts = 3;
-
-    while (!$connected && $attempts < $maxAttempts) {
-        try {
-            $dbConnection = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-            $dbConnection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $connected = true;
-            $dbConnected = true;
-
-            // Check if the notes table exists
-            $stmt = $dbConnection->query("SHOW TABLES LIKE 'notes'");
-            if ($stmt->rowCount() > 0) {
-                $tableExists = true;
-
-                // Fetch notes
-                $stmt = $dbConnection->query("SELECT * FROM notes ORDER BY created_at DESC");
-                $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
-        } catch (PDOException $e) {
-            $attempts++;
-            // Check for "unknown database" error specifically
-            if (strpos($e->getMessage(), 'Unknown database') !== false) {
-                $dbError = 'Database "' . $dbname . '" does not exist yet!';
-                break; // Exit the loop immediately
-            }
-
-            if ($attempts >= $maxAttempts) {
-                throw $e;
-            }
-            sleep(1); // Wait 1 second before retrying
-        }
-    }
-} catch (PDOException $e) {
-    $dbError = 'Database connection failed: ' . $e->getMessage();
-}
-
-// Get MySQL version if connected
-$mysqlVersion = null;
-if ($dbConnected) {
     try {
-        $mysqlVersion = $dbConnection->query('select version()')->fetchColumn();
-    } catch (Exception $e) {
-        // Ignore error
+        // Try to connect (max 3 attempts)
+        for ($i = 0; $i < 3; $i++) {
+            try {
+                $dsn = "mysql:host={$config['host']};dbname={$config['dbname']}";
+                $result['connection'] = new PDO($dsn, $config['username'], $config['password'], [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]);
+                $result['connected'] = true;
+
+                // Check for notes table and fetch data
+                if ($result['connection']->query("SHOW TABLES LIKE 'notes'")->rowCount() > 0) {
+                    $result['tableExists'] = true;
+                    $result['notes'] = $result['connection']->query("SELECT * FROM notes ORDER BY created_at DESC")
+                        ->fetchAll(PDO::FETCH_ASSOC);
+                }
+
+                // Get MySQL version
+                $result['mysqlVersion'] = $result['connection']->query('SELECT version()')->fetchColumn();
+                break;
+            } catch (PDOException $e) {
+                if (strpos($e->getMessage(), 'Unknown database') !== false) {
+                    $result['error'] = "Database \"{$config['dbname']}\" does not exist yet!";
+                    break;
+                }
+
+                if ($i === 2) throw $e; // Last attempt failed
+                sleep(1); // Wait before retry
+            }
+        }
+    } catch (PDOException $e) {
+        $result['error'] = 'Database connection failed: ' . $e->getMessage();
     }
+
+    return $result;
 }
+
+// Get database connection and data
+$db = setupDatabaseConnection();
 
 // Display basic information about the environment
 ?>
@@ -75,211 +74,157 @@ if ($dbConnected) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple PHP Initialization</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-        }
-
-        .header {
-            padding-bottom: 1rem;
-            border-bottom: .05rem solid #e5e5e5;
-            margin-bottom: 2rem;
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
-    <div class="container">
-        <header class="header">
-            <h1>Simple PHP Initialization</h1>
-            <p class="lead">Your PHP <?= phpversion() ?> environment is ready!</p>
+<body class="bg-gray-50">
+    <div class="max-w-5xl mx-auto p-6">
+        <header class="pb-4 border-b border-gray-200 mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Simple PHP Initialization</h1>
+            <p class="text-lg text-gray-600">Your PHP <?= phpversion() ?> environment is ready!</p>
         </header>
 
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        Environment Information
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group list-group-flush">
-                            <li class="list-group-item">PHP Version: <?= phpversion() ?></li>
-                            <li class="list-group-item">Web Server: <?= $_SERVER['SERVER_SOFTWARE'] ?></li>
-                            <li class="list-group-item">Document Root: <?= $_SERVER['DOCUMENT_ROOT'] ?></li>
-                            <li class="list-group-item">Server Protocol: <?= $_SERVER['SERVER_PROTOCOL'] ?></li>
-                        </ul>
-                    </div>
-                </div>
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <!-- Environment Info -->
+            <div class="bg-white rounded shadow">
+                <div class="bg-blue-600 text-white p-3">Environment Information</div>
+                <ul class="divide-y divide-gray-100 p-0">
+                    <li class="p-3">PHP Version: <?= phpversion() ?></li>
+                    <li class="p-3">Web Server: <?= $_SERVER['SERVER_SOFTWARE'] ?></li>
+                    <li class="p-3">Document Root: <?= $_SERVER['DOCUMENT_ROOT'] ?></li>
+                    <li class="p-3">Server Protocol: <?= $_SERVER['SERVER_PROTOCOL'] ?></li>
+                </ul>
             </div>
 
-            <div class="col-md-6">
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">
-                        Database Connection
-                    </div>
-                    <div class="card-body">
-                        <?php if ($dbConnected): ?>
-                            <div class="alert alert-success">Database connection successful!</div>
-                            <p>Connected to database: <strong><?= htmlspecialchars($dbname) ?></strong></p>
-                            <?php if ($mysqlVersion): ?>
-                                <p>MySQL version: <strong><?= htmlspecialchars($mysqlVersion) ?></strong></p>
-                            <?php endif; ?>
-                        <?php elseif (isset($dbError) && strpos($dbError, 'does not exist yet') !== false): ?>
-                            <div class="alert alert-warning"><?= htmlspecialchars($dbError) ?></div>
-                            <div class="alert alert-info">
-                                <h4 class="alert-heading">Database Needs Initialization</h4>
-                                <p>Your database exists but needs to be initialized with tables and sample data. You have two options:</p>
+            <!-- Database Connection -->
+            <div class="bg-white rounded shadow">
+                <div class="bg-green-600 text-white p-3">Database Connection</div>
+                <div class="p-4">
+                    <?php if ($db['connected']): ?>
+                        <div class="bg-green-100 border-green-400 text-green-700 p-3 rounded mb-3">
+                            Database connection successful!
+                        </div>
+                        <p>Connected to database: <strong><?= htmlspecialchars($db['dbname'] ?? 'simple_php') ?></strong></p>
+                        <?php if ($db['mysqlVersion']): ?>
+                            <p>MySQL version: <strong><?= htmlspecialchars($db['mysqlVersion']) ?></strong></p>
+                        <?php endif; ?>
+                    <?php elseif (isset($db['error']) && strpos($db['error'], 'does not exist yet') !== false): ?>
+                        <div class="bg-red-100 text-red-700 p-3 rounded mb-3">
+                            <?= htmlspecialchars($db['error']) ?>
+                        </div>
+                        <div class="bg-yellow-50 text-yellow-700 p-3 rounded">
+                            <h4 class="font-bold mb-2">Database Needs Initialization</h4>
+                            <p>Run the migration script or import the SQL file manually.</p>
 
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <strong>Option 1: Run the Migration Script</strong>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="mb-2">This will automatically create tables and insert sample data.</p>
-
-                                        <div class="mb-2">
-                                            <span class="badge bg-secondary">For Non-Docker users:</span>
-                                            <div class="bg-dark text-light p-2 mt-1 rounded">
-                                                <code>php database/migrate.php</code>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <span class="badge bg-secondary">For Docker users:</span>
-                                            <div class="bg-dark text-light p-2 mt-1 rounded">
-                                                <code>docker-compose exec app php database/migrate.php</code>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <strong>Option 2: Manual Import</strong>
-                                    </div>
-                                    <div class="card-body">
-                                        <p>Alternatively, you can manually import the SQL file:</p>
-                                        <ol class="mb-0">
-                                            <li>Go to phpMyAdmin at <a href="http://localhost:8081" target="_blank">http://localhost:8081</a> (for Docker users)</li>
-                                            <li>Select the <code><?= htmlspecialchars($dbname) ?></code> database</li>
-                                            <li>Click on the "Import" tab at the top</li>
-                                            <li>Choose the file <code>database/database.sql</code></li>
-                                            <li>Click "Go" to import the database structure and sample data</li>
-                                        </ol>
+                            <div class="bg-white border rounded mt-3 mb-3">
+                                <div class="p-2 bg-gray-50 border-b font-medium">Option 1: Migration Script</div>
+                                <div class="p-3">
+                                    <div class="bg-gray-800 text-white p-2 text-sm rounded">
+                                        docker-compose exec app php database/migrate.php
                                     </div>
                                 </div>
                             </div>
-                        <?php else: ?>
-                            <div class="alert alert-danger"><?= htmlspecialchars($dbError) ?></div>
-                            <p>Check your database connection settings in the .env file or ensure the MySQL service is running.</p>
-                        <?php endif; ?>
-                    </div>
+
+                            <div class="bg-white border rounded">
+                                <div class="p-2 bg-gray-50 border-b font-medium">Option 2: Manual Import</div>
+                                <div class="p-3">
+                                    <ol class="list-decimal pl-4 text-sm">
+                                        <li>Access phpMyAdmin at <a href="http://localhost:8081" class="text-blue-600 hover:underline">localhost:8081</a></li>
+                                        <li>Select the database and import <code class="bg-gray-100 px-1">database/database.sql</code></li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="bg-red-100 text-red-700 p-3 rounded">
+                            <?= htmlspecialchars($db['error']) ?>
+                        </div>
+                        <p class="mt-2">Check your database settings in the .env file</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                Available PHP Extensions
-            </div>
-            <div class="card-body">
-                <div class="row">
+        <!-- PHP Extensions -->
+        <div class="bg-white rounded shadow mb-6 overflow-hidden">
+            <div class="bg-blue-400 text-white p-3">Available PHP Extensions</div>
+            <div class="p-4">
+                <div class="grid md:grid-cols-3 gap-4">
                     <?php
                     $extensions = get_loaded_extensions();
                     sort($extensions);
                     $chunks = array_chunk($extensions, ceil(count($extensions) / 3));
 
                     foreach ($chunks as $chunk) {
-                        echo '<div class="col-md-4">';
-                        echo '<ul class="list-group list-group-flush">';
+                        echo '<ul class="divide-y text-sm">';
                         foreach ($chunk as $ext) {
-                            echo '<li class="list-group-item">' . htmlspecialchars($ext) . '</li>';
+                            echo '<li class="py-1.5">' . htmlspecialchars($ext) . '</li>';
                         }
                         echo '</ul>';
-                        echo '</div>';
                     }
                     ?>
                 </div>
             </div>
         </div>
 
-        <?php if ($tableExists && count($notes) > 0): ?>
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    Sample Data from Database
-                </div>
-                <div class="card-body">
-                    <?php foreach ($notes as $note): ?>
-                        <div class='card mb-3'>
-                            <div class='card-header'><?= htmlspecialchars($note['title']) ?></div>
-                            <div class='card-body'>
-                                <p class='card-text'><?= htmlspecialchars($note['content']) ?></p>
-                                <div class='text-muted'>Created: <?= htmlspecialchars($note['created_at']) ?></div>
+        <!-- Sample Notes Display -->
+        <?php if ($db['tableExists'] && count($db['notes']) > 0): ?>
+            <div class="bg-white rounded shadow mb-6">
+                <div class="bg-yellow-400 text-gray-800 p-3">Sample Notes from Database</div>
+                <div class="p-4 space-y-3">
+                    <?php foreach ($db['notes'] as $note): ?>
+                        <div class="border rounded">
+                            <div class="bg-gray-50 p-2 border-b font-medium">
+                                <?= htmlspecialchars($note['title']) ?>
+                            </div>
+                            <div class="p-3">
+                                <p><?= htmlspecialchars($note['content']) ?></p>
+                                <div class="text-gray-500 text-xs mt-2">Created: <?= htmlspecialchars($note['created_at']) ?></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
             </div>
-        <?php elseif (!$tableExists && $dbConnected): ?>
-            <div class="alert alert-info">
-                <h4 class="alert-heading">Database Initialization</h4>
-                <p>Run the database migration script to create sample tables:</p>
-                <pre>docker-compose exec app php database/migrate.php</pre>
+        <?php elseif (!$db['tableExists'] && $db['connected']): ?>
+            <div class="bg-blue-50 text-blue-700 p-3 mb-6 rounded">
+                <h4 class="font-bold mb-1">Database tables missing</h4>
+                <p>Initialize your database with the migration script:</p>
+                <pre class="bg-gray-800 text-white p-2 mt-1 rounded text-sm">docker-compose exec app php database/migrate.php</pre>
             </div>
         <?php endif; ?>
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card mb-4">
-                    <div class="card-header bg-dark text-white">
-                        <i class="bi bi-laptop"></i> Next Steps (Standard Environment)
-                    </div>
-                    <div class="card-body">
-                        <ol class="ps-4">
-                            <li class="mb-2">Set up your database:
-                                <ul class="mt-1">
-                                    <li>Import <code>database/database.sql</code> manually via phpMyAdmin, or</li>
-                                    <li>Run <code>php database/migrate.php</code></li>
-                                </ul>
-                            </li>
-                            <li class="mb-2">Install dependencies: <code>composer install</code></li>
-                            <li class="mb-2">Start building your PHP application in the <code>public/</code> directory</li>
-                            <li>Structure your application any way you like</li>
-                        </ol>
-                    </div>
+        <!-- Next Steps Cards -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded shadow">
+                <div class="bg-gray-800 text-white p-3">Standard Environment Setup</div>
+                <div class="p-4">
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li>Set up database:
+                            <ul class="list-disc pl-5 mt-1 text-sm space-y-1">
+                                <li>Run <code class="bg-gray-100 px-1">php database/migrate.php</code></li>
+                            </ul>
+                        </li>
+                        <li>Install dependencies: <code class="bg-gray-100 px-1">composer install</code></li>
+                        <li>You can delete this page and build your own application in <code class="bg-gray-100 px-1">public/</code></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="bg-white rounded shadow">
+                <div class="bg-blue-600 text-white p-3">Docker Environment Setup</div>
+                <div class="p-4">
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li>Initialize database: <code class="bg-gray-100 px-1">docker-compose exec app php database/migrate.php</code></li>
+                        <li>Access phpMyAdmin: <a href="http://localhost:8081" class="text-blue-600 hover:underline">localhost:8081</a></li>
+                        <li>Install dependencies: <code class="bg-gray-100 px-1">docker-compose exec app composer install</code></li>
+                        <li>You can delete this page and build your own application in <code class="bg-gray-100 px-1">public/</code></li>
+                    </ol>
                 </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <i class="bi bi-docker"></i> Next Steps (Docker Environment)
-                    </div>
-                    <div class="card-body">
-                        <ol class="ps-4">
-                            <li class="mb-2">Initialize your database: <code>docker-compose exec app php database/migrate.php</code></li>
-                            <li class="mb-2">Access database admin at <a href="http://localhost:8081" target="_blank" class="text-decoration-none">http://localhost:8081</a>
-                                <small class="text-muted">(username: root, password: root_password)</small>
-                            </li>
-                            <li class="mb-2">Install dependencies: <code>docker-compose exec app composer install</code></li>
-                            <li class="mb-2">Start building your PHP application in the <code>public/</code> directory</li>
-                            <li>Structure your application any way you like</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <footer class="pt-4 my-md-5 pt-md-5 border-top">
-            <div class="row">
-                <div class="col-12 col-md">
-                    <small class="d-block mb-3 text-muted">&copy; <?= date('Y') ?> Simple PHP Initialization</small>
-                </div>
-            </div>
+        <footer class="pt-4 border-t border-gray-200 text-center text-gray-500 text-sm">
+            &copy; <?= date('Y') ?> Simple PHP Initialization
         </footer>
     </div>
 </body>

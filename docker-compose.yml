@@ -9,7 +9,7 @@ services:
     networks:
       - app-network
     environment:
-      - DB_HOST=mysql
+      - DB_HOST=mysql # Meaning that's running on localhost
       - DB_PORT=3306
       - DB_DATABASE=simple_php
       - DB_USERNAME=root
@@ -53,7 +53,7 @@ services:
     ports:
       - "8081:80"  # Changed from 8081:80 to avoid port conflicts
     environment:
-      PMA_HOST: mysql
+      PMA_HOST: mysql # Meaning that's running on localhost
       PMA_USER: root
       PMA_PASSWORD: root_password
       MYSQL_ROOT_PASSWORD: root_password

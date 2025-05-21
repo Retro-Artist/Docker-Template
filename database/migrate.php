@@ -7,7 +7,7 @@
  */
 
 // Connect to the database using environment variables or default values
-$host = getenv('DB_HOST') ?: 'mysql';
+$host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_DATABASE') ?: 'simple_php';
 $username = getenv('DB_USERNAME') ?: 'root';
 $password = getenv('DB_PASSWORD') ?: 'root_password';

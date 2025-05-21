@@ -61,7 +61,7 @@
                     <div class="card-body">
                         <?php
                         try {
-                            $host = getenv('DB_HOST') ?: 'mysql';
+                            $host = getenv('DB_HOST') ?: 'localhost';
                             $dbname = getenv('DB_DATABASE') ?: 'simple_php';
                             $username = getenv('DB_USERNAME') ?: 'root';
                             $password = getenv('DB_PASSWORD') ?: 'root_password';
@@ -136,7 +136,7 @@
         <?php
         // Check if the notes table exists and display notes if it does
         try {
-            $host = getenv('DB_HOST') ?: 'mysql';
+            $host = getenv('DB_HOST') ?: 'localhost';
             $dbname = getenv('DB_DATABASE') ?: 'simple_php';
             $username = getenv('DB_USERNAME') ?: 'root';
             $password = getenv('DB_PASSWORD') ?: 'root_password';

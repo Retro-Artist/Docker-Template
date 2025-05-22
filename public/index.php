@@ -241,7 +241,7 @@ $db = setupDatabaseConnection();
         <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="bg-white rounded-md shadow-sm border border-php-200">
                 <div class="bg-gradient-to-r from-php-500 to-php-600 text-white p-3 rounded-t-md">
-                    <i class="fas fa-code mr-2 opacity-90"></i> Standard Environment Setup
+                    <i class="fas fa-code mr-2"></i> Standard Environment Setup
                 </div>
                 <div class="p-5">
                     <div class="space-y-4">
@@ -289,7 +289,7 @@ $db = setupDatabaseConnection();
 
             <div class="bg-white rounded-md shadow-sm border border-php-200">
                 <div class="bg-gradient-to-r from-php-500 to-php-600 text-white p-3 rounded-t-md">
-                    <i class="fab fa-docker mr-2 opacity-90"></i> Docker Environment Setup
+                    <i class="fab fa-docker mr-2"></i> Docker Environment Setup
                 </div>
                 <div class="p-5">
                     <div class="space-y-4">

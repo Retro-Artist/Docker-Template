@@ -218,7 +218,7 @@ $db = setupDatabaseConnection();
                 <div class="p-4 space-y-3">
                     <?php foreach ($db['notes'] as $note): ?>
                         <div class="border border-php-200 rounded-md">
-                            <div class="bg-php-100 p-2 border-b border-php-200 font-medium text-php-800">
+                            <div class="bg-php-200 p-2 border-b border-php-200 font-medium text-php-800">
                                 <?= htmlspecialchars($note['title']) ?>
                             </div>
                             <div class="p-3">
